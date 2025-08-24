@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Embeddings + Tiny Semantic Search (transformers.js)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0f172a; color:#e2e8f0; margin:0; padding:24px; }
+    h1 { margin: 0 0 8px; font-size: 1.8rem; }
+    p { color:#94a3b8; }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    .panel { background:#0b1220; border:1px solid #27364a; border-radius:12px; padding:16px; }
+    .row { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; }
+    .media { position:relative; width:fit-content; }
+    img { max-width: 480px; border-radius:10px; display:block; }
+    #overlay { position:absolute; top:0; left:0; }
+    textarea, input[type="text"] { width:100%; background:#0f1a2a; color:#e2e8f0; border:1px solid #27364a; border-radius:8px; padding:10px; }
+    button { background:#06b6d4; color:#081524; border:0; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:600; }
+    button:disabled { opacity:0.6; cursor:not-allowed; }
+    code { background:#0f1a2a; padding:2px 6px; border-radius:6px; border:1px solid #27364a; }
+    .status { font-size:1.05rem; margin:12px 0; color:#cbd5e1 }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+    @media (max-width: 860px){ .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Embeddings + Tiny Semantic Search (transformers.js)</h1>
+    <p class="status" id="status">
+      This shows privacy-first search — we embed text on-device and rank by cosine similarity. No server.
+    </p>
+
+    <div class="panel grid">
+      <div>
+        <label for="docs"><strong>Documents (one per line)</strong></label>
+        <textarea id="docs" rows="8">Edge AI keeps your data private.
+Gemma is built for small, efficient on-device use.
+Transformers.js runs ML models in the browser.
+XR + AI enables hands-free workflows in the field.</textarea>
+
+        <div style="margin-top:10px;">
+          <label for="query"><strong>Query</strong></label>
+          <input id="query" type="text" value="Why use XR?" />
+        </div>
+
+        <div style="margin-top:12px; display:flex; gap:8px;">
+          <button id="runBtn">Run Search</button>
+          <button id="warmBtn">Warm Up Model</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="media">
+          <img id="demo-img" src="https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg" width="480" alt="demo"/>
+          <canvas id="overlay"></canvas>
+        </div>
+        <div id="results" style="margin-top:12px;"></div>
+      </div>
+    </div>
+
+    <p style="margin-top:18px;">
+      Powered by <code>@xenova/transformers</code> — runs fully in your browser with WebGPU/WASM.
+    </p>
+  </div>
+
+  <script type="module">
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js';
+
+    const statusEl = document.getElementById('status');
+    const runBtn = document.getElementById('runBtn');
+    const warmBtn = document.getElementById('warmBtn');
+    const docsEl = document.getElementById('docs');
+    const queryEl = document.getElementById('query');
+    const resultsEl = document.getElementById('results');
+
+    let embedder = null;
+
+    function cosine(a,b){
+      let d=0,na=0,nb=0;
+      for(let i=0;i<a.length;i++){ d+=a[i]*b[i]; na+=a[i]*a[i]; nb+=b[i]*b[i]; }
+      return d/(Math.sqrt(na)*Math.sqrt(nb));
+    }
+
+    async function loadModel(){
+      if (embedder) return embedder;
+      statusEl.textContent = 'Loading model (first run downloads weights)...';
+      // small, fast embeddings model
+      embedder = await pipeline('feature-extraction', 'Xenova/gte-small');
+      statusEl.textContent = 'Model ready ✅';
+      return embedder;
+    }
+
+    async function warmUp(){
+      runBtn.disabled = warmBtn.disabled = true;
+      await loadModel();
+      // do a tiny dummy call so compile/caches are warm
+      await embedder('hello world', { pooling:'mean', normalize:true });
+      statusEl.textContent = 'Warmed up — first inference will be faster.';
+      runBtn.disabled = warmBtn.disabled = false;
+    }
+
+    async function runSearch(){
+      runBtn.disabled = warmBtn.disabled = true;
+      resultsEl.innerHTML = '';
+      try {
+        const model = await loadModel();
+        const docs = docsEl.value.split('\n').map(s => s.trim()).filter(Boolean);
+        const q = queryEl.value.trim() || 'hello world';
+
+        const docVecs = await Promise.all(
+          docs.map(d => model(d, { pooling:'mean', normalize:true }))
+        );
+        const qVec = await model(q, { pooling:'mean', normalize:true });
+
+        const scored = docVecs
+          .map((v,i)=>({ doc: docs[i], score: cosine(v.data, qVec.data) }))
+          .sort((a,b)=> b.score - a.score);
+
+        // Render top results
+        const top = scored.slice(0,3);
+        resultsEl.innerHTML = `
+          <div class="panel">
+            <strong>Top Matches</strong>
+            <ol>
+              ${top.map(t => `<li>${t.doc} <em>(score: ${t.score.toFixed(3)})</em></li>`).join('')}
+            </ol>
+          </div>
+        `;
+
+        console.table(top);
+        statusEl.textContent = `Top match: "${top[0].doc}"`;
+      } catch (e){
+        console.error(e);
+        statusEl.textContent = 'Error running search — open DevTools for details.';
+      } finally {
+        runBtn.disabled = warmBtn.disabled = false;
+      }
+    }
+
+    warmBtn.addEventListener('click', warmUp);
+    runBtn.addEventListener('click', runSearch);
+
+    const img = document.getElementById('demo-img');
+    const canvas = document.getElementById('overlay');
+    function fitCanvas(){
+      canvas.width = img.clientWidth;
+      canvas.height = img.clientHeight;
+    }
+    img.addEventListener('load', fitCanvas);
+    window.addEventListener('resize', fitCanvas);
+    fitCanvas();
+  </script>
+</body>
+</html>
