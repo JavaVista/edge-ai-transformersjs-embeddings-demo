@@ -126,9 +126,10 @@ XR + AI enables hands-free workflows in the field.</textarea>
               ${top.slice(1).map(t => `<li>${t.doc} <em>(score: ${t.score.toFixed(3)})</em></li>`).join('')}
             </ol>
           </div>
+          `;
 
         console.table(top);
-        statusEl.textContent = `Top match: ${top[0].doc}`;
+        statusEl.textContent = `Top match: "${top[0].doc}"`;
       } catch (e){
         console.error(e);
         statusEl.textContent = 'Error running search — open DevTools for details.';
