@@ -84,7 +84,7 @@ XR + AI enables hands-free workflows in the field.</textarea>
     async function loadModel(){
       if (embedder) return embedder;
       statusEl.textContent = 'Loading model (first run downloads weights)...';
-      // small, fast embeddings model
+      // small, fast embedding model
       embedder = await pipeline('feature-extraction', 'Xenova/gte-small');
       statusEl.textContent = 'Model ready ✅';
       return embedder;
@@ -94,7 +94,7 @@ XR + AI enables hands-free workflows in the field.</textarea>
       runBtn.disabled = warmBtn.disabled = true;
       await loadModel();
       // do a tiny dummy call so compile/caches are warm
-      await embedder('hello world', { pooling:'mean', normalize:true });
+      await embedder('hello world', { pooling:'mean', normalize: true });
       statusEl.textContent = 'Warmed up — first inference will be faster.';
       runBtn.disabled = warmBtn.disabled = false;
     }
@@ -128,7 +128,7 @@ XR + AI enables hands-free workflows in the field.</textarea>
           </div>
 
         console.table(top);
-        statusEl.textContent = `Top match: "${top[0].doc}"`;
+        statusEl.textContent = `Top match: ${top[0].doc}`;
       } catch (e){
         console.error(e);
         statusEl.textContent = 'Error running search — open DevTools for details.';
