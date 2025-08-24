@@ -122,10 +122,10 @@ XR + AI enables hands-free workflows in the field.</textarea>
           <div class="panel">
             <strong>Top Matches</strong>
             <ol>
-              ${top.map(t => `<li>${t.doc} <em>(score: ${t.score.toFixed(3)})</em></li>`).join('')}
+              <li><strong>🔥 Most likely match:</strong> ${top[0].doc} <em>(score: ${top[0].score.toFixed(3)})</em></li>
+              ${top.slice(1).map(t => `<li>${t.doc} <em>(score: ${t.score.toFixed(3)})</em></li>`).join('')}
             </ol>
           </div>
-        `;
 
         console.table(top);
         statusEl.textContent = `Top match: "${top[0].doc}"`;
