@@ -1,6 +1,6 @@
 # Embeddings + Tiny Semantic Search (transformers.js)
 
-This is a lightweight demo showing how to run **embeddings** and **tiny semantic search** directly in the browser using [transformers.js](https://xenova.github.io/transformers.js/).
+This is a lightweight demo showing how to run **embeddings** and **tiny semantic search** directly in the browser using [transformers.js](https://github.com/xenova/transformers.js).
 
 A privacy-first demo using `@xenova/transformers` in the browser.  
 It embeds text **on-device** and ranks documents by cosine similarity — no server required.
